@@ -36,4 +36,18 @@
     <string name="action_retry">Tentar novamente</string>
     <string name="action_allow">Permitir</string>
     <string name="cd_center_on_user">Centralizar na minha localização</string>
+
+    <!-- Atualizador automático -->
+    <string name="update_available_title">Atualização disponível</string>
+    <string name="update_available_message">A versão %1$s está disponível. Você está usando a %2$s.</string>
+    <string name="update_downloading_title">Baixando a versão %1$s…</string>
+    <string name="update_ready_title">Pronto para instalar</string>
+    <string name="update_ready_message">O download terminou e o arquivo foi verificado. Toque em Instalar e confirme na tela do Android. Se o Android pedir, permita que o Radar Detector instale apps e toque em Instalar de novo.</string>
+    <string name="update_failed_title">Falha na atualização</string>
+    <string name="update_failed_message">Não foi possível baixar a atualização. Verifique sua conexão e tente novamente.</string>
+    <string name="update_action_download">Atualizar</string>
+    <string name="update_action_install">Instalar</string>
+    <string name="update_action_later">Depois</string>
+    <string name="update_action_cancel">Cancelar</string>
+    <string name="update_action_close">Fechar</string>
 </resources>

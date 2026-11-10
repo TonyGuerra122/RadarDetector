@@ -15,6 +15,11 @@
 #   DEPLOY_PATH              pasta de destino no servidor (ex.: /srv/arquivos/radardetector)
 #   DEPLOY_SSH_KEY           chave SSH privada (ed25519) cuja pública está no authorized_keys do servidor
 #   DEPLOY_KNOWN_HOSTS       saída de: ssh-keyscan -p <porta> <host>
+#
+# Variável necessária (Settings → Secrets and variables → Actions → aba Variables):
+#   UPDATE_MANIFEST_URL      endereço HTTPS público do latest.json no servidor
+#                            (ex.: https://arquivos.meudominio.com/radardetector/latest.json).
+#                            Vai embutido no APK e é onde o app procura atualizações.
 
 name: Deploy APK
 
@@ -65,6 +70,7 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          UPDATE_MANIFEST_URL: ${{ vars.UPDATE_MANIFEST_URL }}
         run: ./gradlew :app:assembleRelease
 
       - name: Conferir assinatura
@@ -76,10 +82,49 @@ jobs:
       - name: Preparar arquivos
         run: |
           mkdir -p dist
-          APK="RadarDetector-${VERSION_NAME}.apk"
+          # Nome fixo: o servidor sempre tem a versão mais nova em RadarDetector-latest.apk.
+          APK="RadarDetector-latest.apk"
           cp app/build/outputs/apk/release/app-release.apk "dist/$APK"
           (cd dist && sha256sum "$APK" > "$APK.sha256")
+
+          # packageName e versionCode são lidos do próprio APK, a fonte da verdade.
+          AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2
+          BADGING=$("$AAPT2" dump badging "dist/$APK" | head -1)
+          APK_PACKAGE=$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" <<< "$BADGING")
+          APK_VERSION_CODE=$(sed -n "s/.* versionCode='\([^']*\)'.*/\1/p" <<< "$BADGING")
+
+          # Manifesto lido pelo atualizador do app. apkFile é relativo ao próprio latest.json.
+          jq -n \
+            --arg packageName "$APK_PACKAGE" \
+            --argjson versionCode "$APK_VERSION_CODE" \
+            --arg versionName "$VERSION_NAME" \
+            --arg apkFile "$APK" \
+            --arg sha256 "$(cut -d' ' -f1 "dist/$APK.sha256")" \
+            '{packageName: $packageName, versionCode: $versionCode, versionName: $versionName, apkFile: $apkFile, sha256: $sha256}' \
+            > dist/latest.json
+          cat dist/latest.json
           ls -l dist
+
+      - name: Validar latest.json
+        # Mesmas regras que o app aplica antes de baixar (UpdateManifestParser), mais a conferência
+        # com o APK de verdade. Se algo não bater, o deploy para aqui e nada é enviado.
+        run: |
+          APK="dist/RadarDetector-latest.apk"
+          AAPT2=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/aapt2
+          BADGING=$("$AAPT2" dump badging "$APK" | head -1)
+          jq -e \
+            --arg pkg "$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" <<< "$BADGING")" \
+            --argjson code "$(sed -n "s/.* versionCode='\([^']*\)'.*/\1/p" <<< "$BADGING")" \
+            --arg sha "$(sha256sum "$APK" | cut -d' ' -f1)" \
+            '
+              (.packageName == $pkg)
+              and (.versionCode | type == "number" and . == floor and . > 0 and . == $code)
+              and (.versionName | type == "string" and length > 0)
+              and (.apkFile | type == "string" and test("^[A-Za-z0-9._-]+\\.apk$"))
+              and (.sha256 | type == "string" and test("^[0-9a-f]{64}$") and . == $sha)
+            ' dist/latest.json > /dev/null \
+            && echo "latest.json válido" \
+            || { echo "::error::latest.json inválido ou diferente do APK"; exit 1; }
 
       - name: Configurar SSH
         env:
@@ -99,9 +144,14 @@ jobs:
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          rsync -avz \
-            -e "ssh -i ~/.ssh/deploy_key -p ${DEPLOY_PORT:-22} -o StrictHostKeyChecking=yes" \
-            dist/ "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
+          SSH="ssh -i ~/.ssh/deploy_key -p ${DEPLOY_PORT:-22} -o StrictHostKeyChecking=yes"
+          DEST="${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
+          # Primeiro o APK; o latest.json só depois. O rsync grava cada arquivo num temporário e
+          # renomeia no fim, então ninguém baixa um APK pela metade. Se alguém pegar o APK novo
+          # com o latest.json antigo nesses segundos, o SHA-256 não bate e o app só tenta de novo
+          # na próxima abertura.
+          rsync -avz -e "$SSH" --exclude latest.json dist/ "$DEST"
+          rsync -avz -e "$SSH" dist/latest.json "$DEST"
 
       - name: Guardar APK no GitHub também
         uses: actions/upload-artifact@v5

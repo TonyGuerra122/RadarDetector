@@ -35,6 +35,14 @@ android {
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
         versionName = System.getenv("VERSION_NAME") ?: "1.0"
 
+        // Endereço HTTPS do latest.json publicado pelo deploy. Vazio desliga o atualizador.
+        // No CI vem da variável UPDATE_MANIFEST_URL; localmente, de updateManifestUrl no
+        // gradle.properties (opcional).
+        val updateManifestUrl = System.getenv("UPDATE_MANIFEST_URL")
+            ?: providers.gradleProperty("updateManifestUrl").orNull
+            ?: ""
+        buildConfigField("String", "UPDATE_MANIFEST_URL", "\"$updateManifestUrl\"")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -67,6 +75,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -82,6 +91,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.osmdroid.android)
     testImplementation(libs.junit)
+    // org.json real para os testes locais (no JVM, o android.jar só traz uma versão vazia).
+    testImplementation(libs.org.json)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
