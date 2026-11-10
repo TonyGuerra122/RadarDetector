@@ -1,0 +1,39 @@
+<resources>
+    <string name="app_name">Radar Detector</string>
+
+    <!-- Cabeçalho -->
+    <string name="header_title">RADAR DETECTOR</string>
+    <string name="header_subtitle_tracking">Monitorando sua região</string>
+    <string name="header_subtitle_fallback">Localização indisponível · São Paulo</string>
+    <string name="header_count_label">radares</string>
+    <string name="header_count_loading">--</string>
+    <string name="radius_option">%1$d km</string>
+
+    <!-- Lista de radares -->
+    <string name="list_title">Radares próximos</string>
+    <string name="list_subtitle_loading">Buscando radares…</string>
+    <plurals name="list_subtitle_count">
+        <item quantity="one">%1$d encontrado num raio de %2$d km</item>
+        <item quantity="other">%1$d encontrados num raio de %2$d km</item>
+    </plurals>
+    <string name="list_empty">Nenhum radar cadastrado num raio de %1$d km. Tente aumentar o raio.</string>
+    <string name="error_search_failed">Não foi possível buscar os radares. Verifique sua conexão e tente novamente.</string>
+    <string name="permission_rationale">Permita a localização para ver os radares perto de você.</string>
+
+    <!-- Item da lista -->
+    <string name="radar_type_fixed">Radar fixo</string>
+    <string name="radar_type_traffic_light">Radar de semáforo</string>
+    <string name="radar_type_average_speed">Radar de velocidade média</string>
+    <string name="radar_no_description">Sem descrição</string>
+    <string name="radar_distance_suffix">de você</string>
+    <string name="radar_speed_unknown">--</string>
+    <string name="speed_unit">km/h</string>
+    <string name="distance_meters">%1$d m</string>
+    <string name="distance_kilometers">%1$.1f km</string>
+
+    <!-- Ações -->
+    <string name="action_refresh">Atualizar</string>
+    <string name="action_retry">Tentar novamente</string>
+    <string name="action_allow">Permitir</string>
+    <string name="cd_center_on_user">Centralizar na minha localização</string>
+</resources>
