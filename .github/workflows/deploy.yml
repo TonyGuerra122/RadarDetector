@@ -16,10 +16,12 @@
 #   DEPLOY_SSH_KEY           chave SSH privada (ed25519) cuja pública está no authorized_keys do servidor
 #   DEPLOY_KNOWN_HOSTS       saída de: ssh-keyscan -p <porta> <host>
 #
-# Variável necessária (Settings → Secrets and variables → Actions → aba Variables):
+# Endereços embutidos no APK (aba Variables; se não existir, usa um Secret de mesmo nome):
 #   UPDATE_MANIFEST_URL      endereço HTTPS público do latest.json no servidor
 #                            (ex.: https://arquivos.meudominio.com/radardetector/latest.json).
-#                            Vai embutido no APK e é onde o app procura atualizações.
+#                            Vazio desliga o atualizador do app.
+#   RADAR_API_URL            endereço base da API de radares (ex.: https://api.meudominio.com).
+#                            Vazio faz o APK usar http://10.0.2.2:8080 (só funciona no emulador).
 
 name: Deploy APK
 
@@ -70,11 +72,15 @@ jobs:
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-          UPDATE_MANIFEST_URL: ${{ vars.UPDATE_MANIFEST_URL }}
-          # Endereço público da API de radares (ex.: https://api.meudominio.com).
-          # Sem ela, o APK usa http://10.0.2.2:8080, que só funciona no emulador.
-          RADAR_API_URL: ${{ vars.RADAR_API_URL }}
-        run: ./gradlew :app:assembleRelease
+          UPDATE_MANIFEST_URL: ${{ vars.UPDATE_MANIFEST_URL || secrets.UPDATE_MANIFEST_URL }}
+          RADAR_API_URL: ${{ vars.RADAR_API_URL || secrets.RADAR_API_URL }}
+        run: |
+          # Mostra só se cada endereço veio preenchido (o valor pode ser um Secret).
+          [ -n "$UPDATE_MANIFEST_URL" ] && echo "UPDATE_MANIFEST_URL: definido" \
+            || echo "::warning::UPDATE_MANIFEST_URL vazio: o atualizador do app ficará desligado"
+          [ -n "$RADAR_API_URL" ] && echo "RADAR_API_URL: definido" \
+            || echo "::warning::RADAR_API_URL vazio: o APK vai usar http://10.0.2.2:8080 (só emulador)"
+          ./gradlew :app:assembleRelease
 
       - name: Conferir assinatura
         # Falha o deploy se o APK saiu sem assinatura ou com a chave errada.
