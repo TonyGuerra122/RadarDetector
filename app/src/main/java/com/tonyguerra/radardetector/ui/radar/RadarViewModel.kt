@@ -5,7 +5,9 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.tonyguerra.radardetector.BuildConfig
 import com.tonyguerra.radardetector.data.location.LocationPermissions
+import com.tonyguerra.radardetector.data.network.LocalNetworkAccess
 import com.tonyguerra.radardetector.data.location.LocationProvider
 import com.tonyguerra.radardetector.data.model.GeoPoint
 import com.tonyguerra.radardetector.data.model.Radar
@@ -34,12 +36,19 @@ class RadarViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = RadarRepository()
     private val locationProvider = LocationProvider(application)
+    private val localNetwork = LocalNetworkAccess(BuildConfig.RADAR_API_URL)
 
     private val _uiState = MutableStateFlow(RadarUiState())
     val uiState: StateFlow<RadarUiState> = _uiState.asStateFlow()
 
     /** Busca em andamento, se houver. É cancelada quando outra começa. */
     private var searchJob: Job? = null
+
+    /**
+     * `true` se a API está na rede local e falta a permissão "Dispositivos próximos" (Android 17+).
+     * A tela usa isso para pedir a permissão junto com a de localização.
+     */
+    fun isLocalNetworkPermissionMissing(): Boolean = !localNetwork.hasAccess(getApplication())
 
     /** Resposta do pedido de permissão de localização. Em qualquer caso, faz a primeira busca. */
     fun onPermissionResult(granted: Boolean) {
@@ -113,6 +122,14 @@ class RadarViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private suspend fun search(center: GeoPoint) {
+        // Sem a permissão de rede local, a conexão só daria timeout depois de 10 s. Melhor avisar já.
+        if (isLocalNetworkPermissionMissing()) {
+            _uiState.update {
+                it.copy(isLoading = false, radars = emptyList(), needsLocalNetworkPermission = true)
+            }
+            return
+        }
+        _uiState.update { it.copy(needsLocalNetworkPermission = false) }
         try {
             val radars = repository.findNearby(center, _uiState.value.radiusKm * METERS_PER_KM)
             _uiState.update { it.copy(radars = radars, isLoading = false) }

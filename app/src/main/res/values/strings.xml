@@ -19,6 +19,7 @@
     <string name="list_empty">Nenhum radar cadastrado num raio de %1$d km. Tente aumentar o raio.</string>
     <string name="error_search_failed">Não foi possível buscar os radares. Verifique sua conexão e tente novamente.</string>
     <string name="permission_rationale">Permita a localização para ver os radares perto de você.</string>
+    <string name="local_network_rationale">O servidor de radares está na sua rede local. Permita “Dispositivos próximos” para o app conseguir acessá-lo.</string>
 
     <!-- Item da lista -->
     <string name="radar_type_fixed">Radar fixo</string>

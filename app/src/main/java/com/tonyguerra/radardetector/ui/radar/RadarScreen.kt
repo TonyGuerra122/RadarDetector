@@ -30,8 +30,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.tonyguerra.radardetector.R
 import com.tonyguerra.radardetector.data.location.LocationPermissions
+import com.tonyguerra.radardetector.data.network.LocalNetworkAccess
 import com.tonyguerra.radardetector.data.model.GeoPoint
 import com.tonyguerra.radardetector.data.model.Radar
+import com.tonyguerra.radardetector.data.enum.RadarSource
 import com.tonyguerra.radardetector.data.enum.RadarType
 import com.tonyguerra.radardetector.ui.map.MapStyle
 import com.tonyguerra.radardetector.ui.map.RadarMap
@@ -46,25 +48,36 @@ import com.tonyguerra.radardetector.ui.theme.TextSecondary
 /**
  * Tela principal: mapa em tela cheia com os radares próximos.
  *
- * Esta versão "com estado" liga o [RadarViewModel] e pede a permissão de localização na primeira
- * abertura. Todo o desenho fica em [RadarContent], que não tem estado e pode ser usado no Preview.
+ * Esta versão "com estado" liga o [RadarViewModel] e, na primeira abertura, pede a permissão de
+ * localização e, se a API estiver na rede local, a de "Dispositivos próximos" (Android 17+).
+ * Todo o desenho fica em [RadarContent], que não tem estado e pode ser usado no Preview.
  */
 @Composable
 fun RadarScreen(viewModel: RadarViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    // O resultado pode trazer também a permissão de rede local, então a localização é conferida
+    // direto no sistema em vez de olhar "qualquer permissão concedida".
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
-    ) { result -> viewModel.onPermissionResult(granted = result.values.any { it }) }
+    ) { viewModel.onPermissionResult(granted = LocationPermissions.isGranted(context)) }
+
+    val localNetworkLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { viewModel.locateAndSearch() }
 
     LaunchedEffect(Unit) {
         // Se o ViewModel já tem dados (ex.: depois de girar a tela), não pede nem busca de novo.
         if (state.userLocation != null) return@LaunchedEffect
-        if (LocationPermissions.isGranted(context)) {
-            viewModel.onPermissionResult(granted = true)
+        val missing = buildList {
+            if (!LocationPermissions.isGranted(context)) addAll(LocationPermissions.ALL)
+            if (viewModel.isLocalNetworkPermissionMissing()) add(LocalNetworkAccess.PERMISSION)
+        }
+        if (missing.isEmpty()) {
+            viewModel.onPermissionResult(granted = LocationPermissions.isGranted(context))
         } else {
-            permissionLauncher.launch(LocationPermissions.ALL)
+            permissionLauncher.launch(missing.toTypedArray())
         }
     }
 
@@ -75,6 +88,7 @@ fun RadarScreen(viewModel: RadarViewModel = viewModel()) {
         onRefresh = viewModel::locateAndSearch,
         onCenterOnUser = viewModel::centerOnUser,
         onRequestPermission = { permissionLauncher.launch(LocationPermissions.ALL) },
+        onRequestLocalNetworkPermission = { localNetworkLauncher.launch(LocalNetworkAccess.PERMISSION) },
     )
 }
 
@@ -90,6 +104,7 @@ fun RadarContent(
     onRefresh: () -> Unit,
     onCenterOnUser: () -> Unit,
     onRequestPermission: () -> Unit,
+    onRequestLocalNetworkPermission: () -> Unit,
 ) {
     Box(
         Modifier
@@ -126,6 +141,7 @@ fun RadarContent(
                 onRadarClick = onRadarClick,
                 onRefresh = onRefresh,
                 onRequestPermission = onRequestPermission,
+                onRequestLocalNetworkPermission = onRequestLocalNetworkPermission,
             )
         }
     }
@@ -173,17 +189,18 @@ private fun RadarContentPreview() {
                 userLocation = center,
                 hasLocationPermission = true,
                 radars = listOf(
-                    Radar(1, center, 60, RadarType.FIXED, "Av. Paulista", 320.0),
-                    Radar(2, center, 50, RadarType.TRAFFIC_LIGHT, "R. da Consolação", 870.0),
-                    Radar(3, center, 70, RadarType.AVERAGE_SPEED, null, 2450.0),
+                    Radar("local:781", center, 80, RadarType.FIXED, "BR-381", "Decrescente", RadarSource.LOCAL, 320.0),
+                    Radar("overpass:1", center, 60, RadarType.FIXED, null, null, RadarSource.OVERPASS, 870.0),
+                    Radar("local:782", center, 80, RadarType.FIXED, "BR-381", "Crescente", RadarSource.LOCAL, 2450.0),
                 ),
-                selectedRadarId = 1,
+                selectedRadarId = "local:781",
             ),
             onRadiusSelected = {},
             onRadarClick = {},
             onRefresh = {},
             onCenterOnUser = {},
             onRequestPermission = {},
+            onRequestLocalNetworkPermission = {},
         )
     }
 }

@@ -43,6 +43,14 @@ android {
             ?: ""
         buildConfigField("String", "UPDATE_MANIFEST_URL", "\"$updateManifestUrl\"")
 
+        // Endereço da API de radares (GET {url}/{lat}/{lon}/{raio em metros}).
+        // Ordem: variável RADAR_API_URL (CI) → radarApiUrl no gradle.properties → padrão.
+        // O padrão 10.0.2.2 é o localhost do seu PC visto de dentro do emulador.
+        val radarApiUrl = System.getenv("RADAR_API_URL")?.takeIf { it.isNotBlank() }
+            ?: providers.gradleProperty("radarApiUrl").orNull
+            ?: "http://10.0.2.2:8080"
+        buildConfigField("String", "RADAR_API_URL", "\"$radarApiUrl\"")
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

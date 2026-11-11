@@ -42,7 +42,7 @@ fun RadarMap(
     userLocation: GeoPoint?,
     radiusMeters: Int,
     radars: List<Radar>,
-    selectedRadarId: Long?,
+    selectedRadarId: String?,
     cameraRequest: CameraRequest?,
     onRadarClick: (Radar) -> Unit,
     modifier: Modifier = Modifier,

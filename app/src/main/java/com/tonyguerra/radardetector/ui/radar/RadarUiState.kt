@@ -17,6 +17,8 @@ import com.tonyguerra.radardetector.ui.map.CameraRequest
  * @property selectedRadarId radar destacado no mapa e na lista.
  * @property isLoading se há uma busca (ou leitura de localização) em andamento.
  * @property searchFailed se a última busca falhou por erro de rede ou de servidor.
+ * @property needsLocalNetworkPermission a API está na rede local e o usuário ainda não liberou
+ *   "Dispositivos próximos" (Android 17+). Sem isso, a busca nem é tentada.
  * @property cameraRequest último pedido de movimento da câmera do mapa.
  */
 data class RadarUiState(
@@ -25,9 +27,10 @@ data class RadarUiState(
     val hasLocationPermission: Boolean = false,
     val radiusKm: Int = DEFAULT_RADIUS_KM,
     val radars: List<Radar> = emptyList(),
-    val selectedRadarId: Long? = null,
+    val selectedRadarId: String? = null,
     val isLoading: Boolean = false,
     val searchFailed: Boolean = false,
+    val needsLocalNetworkPermission: Boolean = false,
     val cameraRequest: CameraRequest? = null,
 ) {
     companion object {

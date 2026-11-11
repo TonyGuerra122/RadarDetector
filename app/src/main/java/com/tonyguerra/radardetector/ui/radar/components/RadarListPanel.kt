@@ -56,6 +56,7 @@ internal fun RadarListPanel(
     onRadarClick: (Radar) -> Unit,
     onRefresh: () -> Unit,
     onRequestPermission: () -> Unit,
+    onRequestLocalNetworkPermission: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -85,10 +86,16 @@ internal fun RadarListPanel(
             }
 
             if (state.usingFallbackLocation && !state.hasLocationPermission) {
-                PermissionBanner(onRequestPermission)
+                PermissionBanner(stringResource(R.string.permission_rationale), onRequestPermission)
+            }
+            if (state.needsLocalNetworkPermission) {
+                PermissionBanner(stringResource(R.string.local_network_rationale), onRequestLocalNetworkPermission)
             }
 
             when {
+                // O aviso acima já explica o que falta; não mostra "nenhum radar" por baixo dele.
+                state.needsLocalNetworkPermission -> Unit
+
                 state.searchFailed -> MessageBox(
                     message = stringResource(R.string.error_search_failed),
                     actionLabel = stringResource(R.string.action_retry),
@@ -160,9 +167,9 @@ private fun PanelHeader(state: RadarUiState, onRefresh: () -> Unit) {
     }
 }
 
-/** Aviso para pedir a permissão de novo, mostrado quando a busca usa o ponto padrão. */
+/** Aviso com botão "Permitir", usado para as permissão de localização e de rede local. */
 @Composable
-private fun PermissionBanner(onRequestPermission: () -> Unit) {
+private fun PermissionBanner(message: String, onRequestPermission: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -172,7 +179,7 @@ private fun PermissionBanner(onRequestPermission: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = stringResource(R.string.permission_rationale),
+            text = message,
             color = TextPrimary,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.weight(1f),

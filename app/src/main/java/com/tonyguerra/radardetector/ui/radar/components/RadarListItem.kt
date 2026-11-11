@@ -38,7 +38,8 @@ import com.tonyguerra.radardetector.ui.theme.TextPrimary
 import com.tonyguerra.radardetector.ui.theme.TextSecondary
 
 /**
- * Cartão de um radar na lista: placa com o limite de velocidade, tipo e descrição, e a distância.
+ * Cartão de um radar na lista: placa com o limite de velocidade, tipo, via e sentido (ex.:
+ * "BR-381 · Decrescente"), e a distância.
  * Quando [selected] for `true`, o cartão fica com fundo verde-escuro e borda neon.
  */
 @Composable
@@ -65,7 +66,9 @@ internal fun RadarListItem(radar: Radar, selected: Boolean, onClick: () -> Unit)
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Text(
-                    text = radar.description ?: stringResource(R.string.radar_no_description),
+                    text = listOfNotNull(radar.road, radar.direction)
+                        .joinToString(" · ")
+                        .ifEmpty { stringResource(R.string.radar_no_description) },
                     color = TextSecondary,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
