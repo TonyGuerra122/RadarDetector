@@ -63,9 +63,11 @@ android {
             if (releaseStoreFile != null) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            // R8 otimiza o app inteiro. Não use packageScope: otimizar só parte dos pacotes
+            // fez o R8 gerar classes com acesso inválido e o APK de release fechava ao abrir
+            // (IllegalAccessError em kotlin.collections no ProcessLifecycleInitializer).
             optimization {
                 enable = true
-                packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
             }
         }
     }
